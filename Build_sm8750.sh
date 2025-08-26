@@ -139,7 +139,8 @@ else
 fi
 
 # 工作目录 - 按机型区分
-WORKSPACE="$HOME/kernel_${DEVICE_NAME}"
+WORKSPACE="$PWD/build_workspace"
+sudo rm -rf "$WORKSPACE"
 mkdir -p "$WORKSPACE" || error "无法创建工作目录"
 cd "$WORKSPACE" || error "无法进入工作目录"
 
@@ -170,8 +171,8 @@ GIT_EMAIL=$(git config --global user.email || echo "")
 
 if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then
     info "Git 未配置，正在设置..."
-    git config --global user.name "Q1udaoyu"
-    git config --global user.email "sucisama2888@gmail.com"
+    git config --global user.name "Local Builder"
+    git config --global user.email "builder@localhost"
 else
     info "Git 已配置："
 fi
