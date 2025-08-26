@@ -102,7 +102,7 @@ read -p "输入内核构建日期更改(回车默认为原厂): " input_time
 [ -n "$input_time" ] && KERNEL_TIME="$input_time"
 
 ENABLE_KPM=$(prompt_boolean "是否启用KPM？(回车默认开启) [y/N]: " true)
-ENABLE_LZ4KD=$(prompt_boolean "是否启用LZ4KD？(回车默认开启) [y/N]: " true)
+ENABLE_LZ4KD=$(prompt_boolean "是否启用LZ4KD？(回车默认关闭) [y/N]: " false)
 ENABLE_BBR=$(prompt_boolean "是否启用BBR？(回车默认关闭) [y/N]: " false)
 
 # 选择的机型信息输出
