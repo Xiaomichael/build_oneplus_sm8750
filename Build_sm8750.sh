@@ -210,11 +210,50 @@ rm -f kernel_platform/msm-kernel/android/abi_gki_protected_exports_*
 # 设置SukiSU
 info "设置SukiSU..."
 cd kernel_platform || error "进入kernel_platform失败"
-curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" -o setup.sh && bash setup.sh susfs-main || error "SukiSU设置失败"
+curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
 
-cd KernelSU || error "进入KernelSU目录失败"
-export KSU_VERSION=$(expr $(git rev-list --count main 2>/dev/null || echo 13000) + 10700)
-info "SukiSU版本号：$KSU_VERSION"
+# Get KSU Version info
+cd KernelSU
+KSU_VERSION_COUNT=$(git rev-list --count main)
+export KSUVER=$(expr $KSU_VERSION_COUNT + 10700)
+
+for i in {1..3}; do
+  KSU_API_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/Makefile" | \
+    grep -m1 "KSU_VERSION_API :=" | cut -d'=' -f2 | tr -d '[:space:]')
+  [ -n "$KSU_API_VERSION" ] && break || sleep 2
+done
+
+if [ -z "$KSU_API_VERSION" ]; then
+  echo "Error:KSU_API_VERSION Not Found" >&2
+  exit 1
+fi
+
+KSU_COMMIT_HASH=$(git ls-remote https://github.com/SukiSU-Ultra/SukiSU-Ultra.git refs/heads/susfs-main | cut -f1 | cut -c1-8)
+KSU_VERSION_FULL="v${KSU_API_VERSION}-${KSU_COMMIT_HASH}-xiaoxiaow"
+
+# 删除旧定义
+sed -i '/define get_ksu_version_full/,/endef/d' kernel/Makefile
+sed -i '/KSU_VERSION_API :=/d' kernel/Makefile
+sed -i '/KSU_VERSION_FULL :=/d' kernel/Makefile
+
+# 插入新定义在 REPO_OWNER := 之后
+TMP_FILE=$(mktemp)
+while IFS= read -r line; do
+  echo "$line" >> "$TMP_FILE"
+  if echo "$line" | grep -q 'REPO_OWNER :='; then
+    cat >> "$TMP_FILE" <<EOF
+define get_ksu_version_full
+v\\\$\$1-${KSU_COMMIT_HASH}-xiaoxiaow
+endef
+
+KSU_VERSION_API := ${KSU_API_VERSION}
+KSU_VERSION_FULL := ${KSU_VERSION_FULL}
+EOF
+  fi
+done < kernel/Makefile
+mv "$TMP_FILE" kernel/Makefile
+
+echo "✅ SukiSU Ultra configured."
 
 # 设置susfs
 info "设置susfs..."
@@ -379,35 +418,21 @@ make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clan
 
 
 # 应用KPM补丁
-info "应用KPM补丁..."
-cd out/arch/arm64/boot || error "进入boot目录失败"
-curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.0/patch_linux || error "下载patch_linux失败"
-chmod +x patch_linux
-./patch_linux || error "应用patch_linux失败"
-rm -f Image
-mv oImage Image || error "替换Image失败"
+# info "应用KPM补丁..."
+# cd out/arch/arm64/boot || error "进入boot目录失败"
+# curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.0/patch_linux || error "下载patch_linux失败"
+# chmod +x patch_linux
+# ./patch_linux || error "应用patch_linux失败"
+# rm -f Image
+# mv oImage Image || error "替换Image失败"
 
 # 创建AnyKernel3包
 info "创建AnyKernel3包..."
 cd "$WORKSPACE" || error "返回工作目录失败"
-git clone -q https://github.com/showdo/AnyKernel3.git --depth=1 || info "AnyKernel3已存在"
+git clone https://github.com/Xiaomichael/AnyKernel3 --depth=1
 rm -rf ./AnyKernel3/.git
-rm -f ./AnyKernel3/push.sh
 cp "$KERNEL_WORKSPACE/kernel_platform/common/out/arch/arm64/boot/Image" ./AnyKernel3/ || error "复制Image失败"
 
 # 打包
 cd AnyKernel3 || error "进入AnyKernel3目录失败"
-zip -r "AnyKernel3_${KSU_VERSION}_${DEVICE_NAME}_SuKiSu.zip" ./* || error "打包失败"
-
-# 创建C盘输出目录（通过WSL访问Windows的C盘）
-WIN_OUTPUT_DIR="/mnt/c/Kernel_Build/${DEVICE_NAME}/"
-mkdir -p "$WIN_OUTPUT_DIR" || error "无法创建Windows目录，可能未挂载C盘，将保存到Linux目录:$WORKSPACE/AnyKernel3/AnyKernel3_${KSU_VERSION}_${DEVICE_NAME}_SuKiSu.zip"
-
-# 复制Image和AnyKernel3包
-cp "$KERNEL_WORKSPACE/kernel_platform/common/out/arch/arm64/boot/Image" "$WIN_OUTPUT_DIR/"
-cp "$WORKSPACE/AnyKernel3/AnyKernel3_${KSU_VERSION}_${DEVICE_NAME}_SuKiSu.zip" "$WIN_OUTPUT_DIR/"
-
-rm -rf $WORKSPACE
-info "内核包路径: C:/Kernel_Build/${DEVICE_NAME}/AnyKernel3_${KSU_VERSION}_${DEVICE_NAME}_SukiSU.zip"
-info "Image路径: C:/Kernel_Build/${DEVICE_NAME}/Image"
-info "请在C盘目录中查找内核包和Image文件。"
+zip -r "AnyKernel3_${KSU_VERSION}_${DEVICE_NAME}_SukiSU.zip" ./* && cd .. || error "打包失败"
