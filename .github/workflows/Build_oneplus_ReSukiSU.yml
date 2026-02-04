@@ -46,14 +46,6 @@ on:
         required: false
         default: true
         type: boolean
-        
-
-      enable_serialid_check:
-        description: "开启SerialID校验"
-        required: false
-        default: true
-        type: boolean
-      
       
        
 
@@ -68,7 +60,6 @@ jobs:
       CUSTOM_KERNEL_SUFFIX:   ${{ github.event.inputs.custom_kernel_suffix }}
       CUSTOM_KERNEL_TIME:     ${{ github.event.inputs.custom_kernel_time }}
       ENABLE_SCX:       ${{ github.event.inputs.enable_scx }}
-      ENABLE_SERIALID_CHECK:       ${{ github.event.inputs.enable_serialid_check }}
       ENABLE_BBG:       ${{ github.event.inputs.enable_bbg }}
     steps:
       - uses: actions/checkout@v4
