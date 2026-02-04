@@ -1,4 +1,4 @@
-name: Build_oneplus_ReSukiSU
+name: Build_oneplus_resukisu
 on:
   workflow_dispatch:
     inputs:
@@ -46,7 +46,15 @@ on:
         required: false
         default: true
         type: boolean
+        
 
+      enable_serialid_check:
+        description: "开启SerialID校验"
+        required: false
+        default: true
+        type: boolean
+      
+      
        
 
 
@@ -60,6 +68,7 @@ jobs:
       CUSTOM_KERNEL_SUFFIX:   ${{ github.event.inputs.custom_kernel_suffix }}
       CUSTOM_KERNEL_TIME:     ${{ github.event.inputs.custom_kernel_time }}
       ENABLE_SCX:       ${{ github.event.inputs.enable_scx }}
+      ENABLE_SERIALID_CHECK:       ${{ github.event.inputs.enable_serialid_check }}
       ENABLE_BBG:       ${{ github.event.inputs.enable_bbg }}
     steps:
       - uses: actions/checkout@v4
@@ -107,7 +116,7 @@ jobs:
           esac
           if [ "${{ env.KEEP_ORIGINAL_SETTINGS }}" = "true" ] && [ -z "${{ github.event.inputs.custom_kernel_suffix }}" ]; then
             case "${{ env.DEVICES_NAME }}" in
-             oneplus_pad_2_pro)
+            oneplus_pad_2_pro)
               echo 'DEFAULT_SUFFIX=-android15-8-g5a0ffb447c1d-ab13771415-4k' >> $GITHUB_ENV
               ;;
             oneplus_ace5_ultra | realme_GT7)
@@ -116,7 +125,7 @@ jobs:
             oneplus_13 | oneplus_ace5_pro | oneplus_ace_6 | oneplus_13t | realme_GT7pro | realme_GT7pro_Speed | realme_GT8)
               echo 'DEFAULT_SUFFIX=-android15-8-gf4dc45704e54-abogki446052083-4k' >> $GITHUB_ENV
               ;;
-          esac
+            esac
             echo "使用原官核名称：${{ env.DEFAULT_SUFFIX }}"
           else
             echo "使用自定义名称: ${{ github.event.inputs.custom_kernel_suffix }}"
@@ -154,7 +163,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev dos2unix ccache p7zip-full &
           echo "正在克隆源码仓库..."
           if [ "${DEVICES_NAME}" = "realme_GT7pro" ] || [ "${DEVICES_NAME}" = "realme_GT7pro_Speed" ] || [ "${DEVICES_NAME}" = "realme_GT8" ]; then
-            aria2c -s16 -x16 -k1M https://github.com/realme-kernel-opensource/realme_GT7Pro-AndroidB-common-source/archive/refs/heads/master.zip -o common.zip
+            aria2c -s16 -x16 -k1M https://github.com/realme-kernel-opensource/realme_GT7pro-AndroidB-common-source/archive/refs/heads/master.zip -o common.zip
             unzip -q common.zip && 
             mv "realme_GT7pro-AndroidB-common-source-master" common
           elif [ "${DEVICES_NAME}" = "oneplus_ace5_ultra" ] || [ "${DEVICES_NAME}" = "realme_GT7" ]; then
@@ -230,7 +239,7 @@ jobs:
             echo "ccache缓存命中详情:"
             ccache -sv
           fi
-         
+          
       - name: 🔧 apply lz4 1.10.0 & zstd 1.5.7 patches (添加lz4 1.10.0 & zstd 1.5.7补丁)
         run: |
           echo "正在添加lz4 1.10.0 & zstd 1.5.7补丁…"
@@ -252,17 +261,16 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' ./security/Kconfig
 
           
-      - name: ⚙️ Set SuKiSU Ultra (设置SuKiSU Ultra)
+      - name: ⚙️ Set ReSuKiSU (设置ReSuKiSU)  
         run: |
           cd kernel_workspace
-          echo "正在配置SukiSU Ultra..."
+          echo "正在配置ReSukiSU..."
           curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s builtin
           cd ./KernelSU
           GIT_COMMIT_HASH=$(git rev-parse --short=8 HEAD)
           echo "当前提交哈希: $GIT_COMMIT_HASH"
           export KSU_VERSION=$KSU_VERSION
           for i in {1..3}; do
-            # 从远程 Kbuild 中提取 KSU_API_VERSION
             KSU_API_VERSION=$(curl -s "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/builtin/kernel/Kbuild" | 
               grep -m1 "KSU_VERSION_API :=" | 
               awk -F'= ' '{print $2}' | 
@@ -277,20 +285,21 @@ jobs:
           sed -i '/KSU_VERSION_FULL :=/d' kernel/Kbuild
           awk -v def="$VERSION_DEFINITIONS" '
             /REPO_OWNER :=/ {print; print def; inserted=1; next}
+            1
             END {if (!inserted) print def}
           ' kernel/Kbuild > kernel/Kbuild.tmp && mv kernel/Kbuild.tmp kernel/Kbuild
-          KSU_VERSION=$(expr $(git rev-list --count main) + 37185 2>/dev/null || echo 114514)
+          KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
-          grep -A10 "REPO_OWNER" kernel/Kbuild  # 检查插入点后的内容
-          grep "KSU_VERSION_FULL" kernel/Kbuild # 确认版本定义存在
-          echo "SukiSU版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}-Re-TG@qdykernel"
+          grep -A10 "REPO_OWNER" kernel/Kbuild
+          grep "KSU_VERSION_FULL" kernel/Kbuild
+          echo "ReSukiSU版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}-Re-TG@qdykernel"
 
             
       - name: 🔧 Set up SUSFS (配置 SUSFS)
-        run: |  
+        run: |
           cd kernel_workspace
-          echo "正在添加补丁..."
+          echo "正在添加SukiSU Ultra补丁..."
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android15-6.6
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
           cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
@@ -338,6 +347,7 @@ jobs:
           echo "CONFIG_NET_SCH_INGRESS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEFAULT_FQ_CODEL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo 'CONFIG_DEFAULT_NET_SCH="fq_codel"' >> ./common/arch/arm64/configs/gki_defconfig
+
           #Remove check_defconfig
           sudo sed -i 's/check_defconfig//' ./common/build.config.gki
 
@@ -441,6 +451,7 @@ jobs:
           LD_PRELOAD=$PRELOAD_LIBS stat ./Makefile
           echo "ccache状态："
           ccache -s
+  
       - name: 📦 Make AnyKernel3 (创建Anykernel3)
         run: |
           cp "${GITHUB_WORKSPACE}/.github/workflows/Bin/main.bin" ./
@@ -451,5 +462,5 @@ jobs:
       - name: 📤 Upload AnyKernel3 (上传 Anykernel3)
         uses: actions/upload-artifact@v4
         with:
-         name: AK3_${{ env.KSUVER }}_${{ env.DEVICES_NAME }}_SuKiSU
+         name: AK3_${{ env.KSUVER }}_${{ env.DEVICES_NAME }}_ReSuKiSU
          path: ./AnyKernel3/*
