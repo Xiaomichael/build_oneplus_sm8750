@@ -7,10 +7,9 @@ on:
         type: choice
         description: '清理的工作流名称'
         required: true
-        default: 'Build_oneplus_SukiSU'
+        default: 'Build_oneplus_sm8750'
         options:
-          - "Build_oneplus_SukiSU"
-          - "Build_oneplus_ReSukiSU"
+          - "Build_oneplus_sm8750"
 
       count:
         description: '最多清理的运行次数'
