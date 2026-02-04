@@ -77,6 +77,9 @@ jobs:
           fetch-depth: 0
       - name: ⚙️ Set REPO_MANIFEST (设置对应机型配置文件)
         run: |
+          if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
+            echo "KSUVER_TAG=-ReSukiSU" >> $GITHUB_ENV
+          fi
           case "${{ env.DEVICES_NAME }}" in
             oneplus_ace5_pro)
               echo "REPO_MANIFEST=sm8750_b_16.0.0_oneplus_ace5_pro" >> $GITHUB_ENV
@@ -292,7 +295,7 @@ jobs:
           # 创建版本定义模板&版本格式函数: 使用获取的提交哈希和固定后缀
           # KSU_VERSION_API: API 版本定义
           # KSU_VERSION_FULL: 完整版本定义
-          VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'-TG@qdykernel\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'-TG@qdykernel'
+          VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'${{ env.KSUVER_TAG }}-TG@qdykernel\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'${{ env.KSUVER_TAG }}-TG@qdykernel'
           # 清理内核 Kbuild 中的旧版本定义
           # 删除版本函数
           sed -i '/define get_ksu_version_full/,/endef/d' kernel/Kbuild
@@ -319,7 +322,7 @@ jobs:
           # 验证修改结果
           grep -A10 "REPO_OWNER" kernel/Kbuild  # 检查插入点后的内容
           grep "KSU_VERSION_FULL" kernel/Kbuild # 确认版本定义存在
-          echo "${{ env.KSU_TYPE }}版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}-TG@qdykernel"
+          echo "${{ env.KSU_TYPE }}版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}${{ env.KSUVER_TAG }}-TG@qdykernel"
 
             
       - name: 🔧 Set up SUSFS (配置 SUSFS)
