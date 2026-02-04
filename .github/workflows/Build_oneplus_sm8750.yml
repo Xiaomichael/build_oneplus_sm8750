@@ -197,7 +197,7 @@ jobs:
           
       - name: 🛠 Set ccache DIR(配置ccache目录)
         run: |
-          echo "CCACHE_DIR=$HOME/.ccache_${{ env.DEVICES_NAME }}" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$HOME/.ccache_${{ env.KSU_TYPE }}_${{ env.DEVICES_NAME }}" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=3G" >> $GITHUB_ENV
           echo "当前磁盘空间："
           df -h
@@ -208,10 +208,10 @@ jobs:
         id: ccache-restore
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-neov2-${{ env.DEVICES_NAME }}-${{ runner.os }}-main
+          key: ccache-neov4-${{ env.KSU_TYPE }}-${{ env.DEVICES_NAME }}-${{ runner.os }}-main
           restore-keys: |
-            ccache-neov2-${{ env.DEVICES_NAME }}-${{ runner.os }}-
-            ccache-neov2-${{ env.DEVICES_NAME }}-
+            ccache-neov4-${{ env.KSU_TYPE }}-${{ env.DEVICES_NAME }}-${{ runner.os }}-
+            ccache-neov4-${{ env.KSU_TYPE }}-${{ env.DEVICES_NAME }}-
       
       - name: 📥 Init ccache (初始化配置ccache)
         run: |
